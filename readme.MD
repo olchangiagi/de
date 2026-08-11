@@ -198,7 +198,7 @@
               ┌──────────────┼───────────────┐
               ▼              ▼               ▼
            Airflow         Kafka          Kinesis
-           Batch         Streaming       Streaming
+           Batch         Streaming       Streaming -> Flink/spark streamming 으로 처리
               │
               ▼
        Pandas / Polars / Spark
@@ -208,4 +208,159 @@
               │
               ▼
            S3 GOLD
+```
+
+# Data Ingestion (발생한 데이터를 어떻게 가져오는가?)
+- 수집 방식에 따라 파이프라인 유형 (최초 발생 -> 저장)
+```
+                    DATA INGESTION
+
+                         Source <- 데이터 발생
+                           │
+        ┌──────────────────┼───────────────────┐────────────┐
+        │                  │                   │            │
+        ▼                  ▼                   ▼            ▼
+ [V]Log / Event      [V]Streaming             CDC          Batch 
+ Ingestion             Ingestion           Ingestion     Ingestion
+        │                  │                   │            │
+        ▼                  ▼                   ▼            ▼
+ CloudWatch        Kafka / MSK / Kinesis   DMS / Debezium  CSV/API/DB Export
+ Firehose
+        │                  │                   │            │
+        └──────────────────┼───────────────────┘────────────┘
+                           ▼
+                       S3 BRONZE <- Raw 데이터 저장
+```
+
+- Log / Event Ingestion Pipeline
+     - 로그, 이벤트를 수집하여 저장
+     - 실시간 분석 x, 데이터를 안전하게 쌓는것이 목표 -> 사용시간은 상이함(당일, 한달 후, 주간...)
+```
+┌─────────────────────────────────────────────────────┐
+│          01. LOG / EVENT INGESTION PIPELINE         │
+└─────────────────────────────────────────────────────┘
+
+                로그제너레이터
+                      │
+                      ▼
+               CloudWatch Logs
+                      │
+                      ▼
+             Amazon Data Firehose : 시간 혹은 용량 단위 데이터를 묶어서 전송 -> 딜레이 발생
+                      │
+                      ▼
+                 S3 BRONZE
+                      │
+                 Raw Data 저장
+```
+
+- Batch Processing Ingesction Pipeline
+     - 쌓여있는 데이터를 일정 주기로 처리 -> Airflow
+```
+┌─────────────────────────────────────────────────────┐
+│             02. BATCH DATA PIPELINE                 │
+└─────────────────────────────────────────────────────┘
+
+                 S3 BRONZE
+                      │
+                      ▼
+                   Airflow : 스케줄 작성 -> DAG 작성 -> 데이터 전처리
+                      │
+          ┌───────────┼───────────┐
+          ▼           ▼           ▼
+       Pandas(소)  Polars(중)   Spark(대) <- 데이터의 처리 규모에 따라 분류
+     (10GB 이내)  (수십 GB)    (수백GB, TB)
+          │           │           │
+          └───────────┼───────────┘
+                      ▼
+                 S3 SILVER
+                      │
+                      ▼
+                  S3 GOLD
+                      │
+                      ▼
+              Athena / Redshift
+```
+
+- Real-time Streamming Pipeline
+- 데이터가 들어오는 동시에 즉시 처리
+- 공장 설비/생산시 이상 탐지(감지), 금융 이상 거래 감지, 게임, 실시간 주문량, ...
+```
+┌─────────────────────────────────────────────────────┐
+│          03. REAL-TIME STREAMING PIPELINE           │
+└─────────────────────────────────────────────────────┘
+
+                 로그제너레이터
+                      │
+          ┌───────────┴────────────┐
+          ▼                        ▼
+  [V] Kafka / MSK          [V] Kinesis Data Streams
+          │                        │
+          └───────────┬────────────┘
+                      ▼
+                Spark Streaming
+                     또는
+                 [V] Flink
+                      │
+              Window / Aggregate
+              Filter / Detection
+                      │
+          ┌───────────┼────────────┐
+          ▼           ▼            ▼
+  [v]OpenSearch(ELK, EFK)  S3 Silver   Alert/Event
+```
+
+- ETL Pipeline
+- Extract Transform Load, 데이터 엔지니어의 전통적인 유형
+- 메달리온 아키텍처 구조에서 사용 -> 각 레이어에서 데이터 형태 설명
+```
+┌─────────────────────────────────────────────────────┐
+│                 04. ETL PIPELINE                    │
+└─────────────────────────────────────────────────────┘
+
+             Source / S3 BRONZE
+                      │
+                  Extract
+                      │
+                      ▼
+              Pandas / Polars
+               Spark / Glue (ETL, DB, Table, 크롤러 등 활용)
+                      │
+                  Transform
+                      │
+                      ▼
+                   Load
+                      │
+                      ▼
+                 S3 SILVER
+                      │
+                      ▼
+                  S3 GOLD
+```
+
+- ELT Pipeline
+- 금융 프로젝트 활용, 저장 후 SQL 변환 처리, 제조 활용 가능
+```
+┌─────────────────────────────────────────────────────┐
+│                 05. ELT PIPELINE                    │
+└─────────────────────────────────────────────────────┘
+
+                 Data Source
+                      │
+                   Extract
+                      │
+                      ▼
+                     Load
+                      │
+                      ▼
+             S3 / Redshift
+                      │
+                      ▼
+                  SQL Transform
+                      │
+                      ▼
+              Silver / Gold
+                      │
+                      ▼
+             Analytics Mart
 ```
