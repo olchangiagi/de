@@ -17,10 +17,24 @@ def _extract_cb(**kwargs):
         - context : airflow가 주입한 정보(task 정보, 시간,... 메타 정보), task 전달 데이터
     '''
     # 1. context(airflow 내부 정보 저장 공간)에서 특정 정보 추출, key는 사전에 정의되어 있음
-    t1 = kwargs['ti']
+    ti = kwargs['ti']
+    ds = kwargs['ds']
+    ds_nodash = kwargs['ds_nodash']
+    run_id = kwargs['run_id']
     logging.info("=== Extract 작업 ===")
     logging.info(f"ti = {ti}")
-    pass
+    logging.info(f"ds = {ds}")
+    logging.info(f"ds_nodash = {ds_nodash}")
+    logging.info(f"run_id = {run_id}")
+    '''
+    ds -> task 수행 시간
+    ds_nodash -> task 수행 시간(- 제거)
+    run_id -> manual__2026-08-12T06:41:07.399129+00:00
+    '''
+
+    # 정보 전달 -> XCOM 게시판에 본 task가 글을 작성
+    # XCOM을 통해서 특정 데이터를 PUSH 하는 행위 -> 반환 행위 (return)
+    return f"ds = {ds} ds_nodash = {ds_nodash} run_id = {run_id}"
 
 def _transform_cb(**kwargs):
     pass
