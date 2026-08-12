@@ -320,6 +320,39 @@
   [v]OpenSearch(ELK, EFK)  S3 Silver   Alert/Event
 ```
 
+# 중간 정리 : 구조 유형(텍스트)
+- Application log
+     - app, web, IoT(센서), Factory(센서), 게임, 금융
+- Business event
+     - 행위(로그인, 검색, 스크롤)
+- Database Change
+     - 업데이트, 수정, 삭제...
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 - ETL Pipeline
 - Extract Transform Load, 데이터 엔지니어의 전통적인 유형
 - 메달리온 아키텍처 구조에서 사용 -> 각 레이어에서 데이터 형태 설명
