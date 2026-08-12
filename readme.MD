@@ -422,24 +422,24 @@ Airflow/MWAA or Step Functions + Lambda     Spark Streaming
      - 서버 리스 -> 사용할 때만 비용 발생
 ```
 
+- Processing 전략(strategy) : ELT, ETL
+     - 적절하게 데이터 파이프라인내에 사용
+     - ETL: 전통적인 사용법
+     - ELT: 새롭게 등장해 확산중
+```
+  Processing Strategy
 
+┌─────────┴─────────┐
+│                   │
+▼                   ▼
+ETL                 ELT
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+Extract             Extract
+  ↓                   ↓
+Transform             Load
+  ↓                   ↓
+Load                Transform
+```
 
 - ETL Pipeline
 - Extract Transform Load, 데이터 엔지니어의 전통적인 유형
@@ -451,19 +451,16 @@ Airflow/MWAA or Step Functions + Lambda     Spark Streaming
 
              Source / S3 BRONZE
                       │
-                  Extract
+                  Extract <- Pandas / Polars / Spark / Glue(etl, 데이터베이스, 테이블, 크롤러 등 활용)
                       │
                       ▼
-              Pandas / Polars
-               Spark / Glue (ETL, DB, Table, 크롤러 등 활용)
-                      │
-                  Transform
+                  Transform <- Pandas / Polars / Spark / Glue(etl, 데이터베이스, 테이블, 크롤러 등 활용)
+                          │
+                      ▼
+                   Load <- Pandas / Polars / Spark / Glue(etl, 데이터베이스, 테이블, 크롤러 등 활용)
                       │
                       ▼
-                   Load
-                      │
-                      ▼
-                 S3 SILVER
+                 S3 SILVER 
                       │
                       ▼
                   S3 GOLD
