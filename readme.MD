@@ -396,7 +396,31 @@ S3
         └── *.parquet
 ```
 
+# Data Processing
+- 쌓인 데이터를 어떻게 처리할 것인가?
+- Batch, Streaming
+```
+                    DATA PROCESSING
 
+                       S3 BRONZE
+                           │
+             ┌─────────────┴──────────────────┐
+             │                                │
+             ▼                                ▼
+       Batch Processing                  Stream Processing
+             │                                │
+             ▼                                ▼
+Airflow/MWAA or Step Functions + Lambda     Spark Streaming
+             │                               / Flink
+             ▼
+   Pandas / Polars / Spark -> 데이터 처리
+
+- Airflow 내부에서 DAG를 구성하고, DAG 내에서 Pandas/Polars/Spark(pySpark)등을 활용하여 TASK 작성 -> 처리
+     - EC2등 서버 구축 -> 평시 비용 발생, 인프라 외부 -> 보안 이슈 발생
+     - MWAA
+- Step Function에서 Lambda를 구성하고 Lambda 내부에서 Pandas/Polars/Spark(pySpark)등을 활용하여 TASK 작성 -> 처리
+     - 서버 리스 -> 사용할 때만 비용 발생
+```
 
 
 
