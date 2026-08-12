@@ -5,8 +5,28 @@
 - 공간의 한계 -> 공유 데이터는 raw 데이터가 아닌 raw 데이터에게 접근 간응ㅎ나 정보/작은 규모 raw 가능
 '''
 
+from airflow import DAG
+from airflow.operators.python import PythonOperator
+from datetime import datetime, timedelta
+import logging # 레벨별 로그 출력(에러, 경고, 정보, 디버깅,...)
+
 # 2. DAG 정의
+with DAG (
+    dag_id = "02_basics_python", 
+    description = "파이썬 task, XCOM 사용", 
+    default_args = {
+    "owner"             : "aic-de1-admin",
+    "retries"           : 1, 
+    "retry_delay"       : timedelta(minutes= 1), 
+    },
+    schedule_interval = "@once", # 수동으로 한 번 수행, 주기성 없음 
+    start_date = datetime(2026,6,29), 
+    catchup = False, 
+    tags = ["python", "xcom"]
+
+) as dag:
 
 # 3. Operator 정의
+
 
 # 4. 의존성 정의
