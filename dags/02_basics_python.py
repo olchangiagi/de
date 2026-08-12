@@ -46,11 +46,11 @@ def _transform_cb(**kwargs):
 
     # 2. xcom을 통해서 데이터 획득
     # extract task라는 id를 가진 Task의 계시물을 가져옴
-    ti.xcom_pull(task_ids = "extract_task")
+    data = ti.xcom_pull(task_ids="extract_task")
 
     # 3. 데이터 확인
     logging.info("=== transform ===")
-    logging.info("data = {data}")
+    logging.info(f"data = {data}")
     pass
 
 # 2. DAG 정의
