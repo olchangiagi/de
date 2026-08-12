@@ -27,6 +27,8 @@ with DAG (
 ) as dag:
 
 # 3. Operator 정의
-
+    extract_task = PythonOperator()
+    transform_task = PythonOperator()
 
 # 4. 의존성 정의
+    extract_task >> transform_task
