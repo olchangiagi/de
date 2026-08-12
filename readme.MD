@@ -543,3 +543,20 @@ SQL(질의)       Data Mart(분석)  Search(검색)
               Dashboard -> 관제, 모니터링,...
               Application -> app, web
 ```
+
+# Orchestration
+- 전체 파이프라인 컨트롤(통제)
+- Pipeline Control plane: Airflow/MWAA or Step Function -> 스케줄링, 반복, 전방위 컨트롤
+- 메달리온 아키텍처 관점 적용
+```
+                  ORCHESTRATION
+
+                       Airflow
+                          │
+      ┌───────────────────┼───────────────────┐
+      ▼                   ▼                   ▼
+  Ingestion             ETL Job          Data Quality
+      │                   │                   │
+      ▼                   ▼                   ▼
+  S3 Bronze            Silver              Gold
+```
