@@ -61,7 +61,19 @@ with DAG(
     )
   # 신규 추가 부분
   task_trigger_transform_dag_run = TriggerDagRunOperator(
-
+    task_id = "trigger_transform",
+    # 트리거의 대상, 다음에 구동시킬 DAG의 id
+    trigger_dag_id = "06_multi_dag_2_transform",
+    # 구동시킬 때 전달할 데이터 -> XCOM을 통해서 획득 + jinja 활용
+    conf = {
+      # 항목은 커스텀
+      "json_path" : "{{task_instance.xcom_pull(task_ids = 'extract')}}"
+    },
+    # dag 수행시간에 대한 세팅 -> 첫번째 DAG와 동일하게 두번째 DAG로 해당 시간으로 최초 수행시간으로 간주할지 결정
+    reset_dag_run = True,
+    # 기타 설정
+    # 다음 DAG 가 수행되는 것을 보고 (대기) 종료할 것인가?(동기) 명령 전달 후 바로 종료?(비동기)
+    wait_for_completion = False # 명령 전달 후 바로 종료
   )
 
   #5. 의존성
