@@ -9,6 +9,9 @@ from airflow import DAG
 from airflow.operators.python import PythonOperator
 from datetime import datetime, timedelta
 import logging # 레벨별 로그 출력(에러, 경고, 정보, 디버깅,...)
+# KST (한국 시간대 전체 조정)
+import pendulum
+KST = pendulum.timezone("Asia/Seoul")
 
 # 2-1 콜백 함수 정의
 def _extract_cb(**kwargs):
@@ -21,10 +24,18 @@ def _extract_cb(**kwargs):
     ds = kwargs['ds']
     ds_nodash = kwargs['ds_nodash']
     run_id = kwargs['run_id']
+    # 시간 보정
+    logical_date = kwargs["logical_date"]
+    logical_date_kst = logical_date.in_timezone(KST)
+    # 차후 s3등에 적제할 때 파터션시 활용함. yyyy, mm, dd 끊어서 사용시 활용
+    ds_kst = logical_date_kst.format("YYYY_MM_DD")
+    ds_nodash_kst = logical_date_kst.format("YYYY_MM_DD")
     logging.info("=== Extract 작업 ===")
     logging.info(f"ti = {ti}")
     logging.info(f"ds = {ds}")
     logging.info(f"ds_nodash = {ds_nodash}")
+    logging.info(f"ds_kst = {ds_kst}")
+    logging.info(f"ds_nodash_kst = {ds_nodash_kst}")
     logging.info(f"run_id = {run_id}")
     '''
     ds -> task 수행 시간
@@ -63,7 +74,11 @@ with DAG (
     "retry_delay"       : timedelta(minutes= 1), 
     },
     schedule_interval = "@once", # 수동으로 한 번 수행, 주기성 없음 
-    start_date = datetime(2026,6,29), 
+    # 수행 시작 시간 서울 시간대 타임존 조정
+    start_date = pendulum.datetime(
+        2026,6,29,
+        tz = KST
+    ), # datetime(2026,6,29)
     catchup = False, 
     tags = ["python", "xcom"]
 
