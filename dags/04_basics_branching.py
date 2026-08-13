@@ -16,6 +16,23 @@ import random
 # 2. 전역변수
 KST = pendulum.timezone("Asia/Seoul")
 
+# 4-1. 콜백 함수
+def _branch_cb(**kwags):
+    '''
+    분기 처리 -> 특정 task로 다음 수행 지정 -> task_id 값을 반환
+    '''
+    if random.choice([True, False]):
+        logging.info("task process 분기")
+        return "process"
+    else:
+        logging.info("task skip 분기")
+        return "skip"
+    pass
+
+def _process_cb(**kwags):
+    logging.info("task process 수행")
+    pass
+
 # 3. DAG
 with DAG( 
   dag_id      = "04_basics_branching",
@@ -36,18 +53,22 @@ with DAG(
         task_id = "start"
     )
     task_branch = BranchPythonOperator(
-        task_id = "branch"
+        task_id = "branch",
         python_callable = _branch_cb
     )
     task_process = PythonOperator(
-        task_id = "process"
+        task_id = "process",
         python_callable = _process_cb
     )
     task_skip = EmptyOperator(
         task_id = "skip"
     )
     task_end = EmptyOperator(
-        task_id = "end"
+        task_id = "end",
+        # 분기 처리를 수행 -> 진행되지 않은 task가 존재 -> 성공/엔딩의 기준을 설정해야 함
+        # task 전체 수행에 대한 조건 부여
+        # 실패 x, 최소 1개는 성공해야 함 -> 완룐
+        trigger_rule = TriggerRule.NONE_FAILED_MIN_ONE_SUCCESS
     )
 
   # 5. 의존성(수행순서)
