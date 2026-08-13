@@ -16,7 +16,7 @@ KST = pendulum.timezone("Asia/Seoul")
 
 # 1-2. 콜백 함수
 def _print(**kwargs):
-    logging.info(f"ds 출력 {kwargs["ds"]}")
+    logging.info(f'ds 출력 {kwargs["ds"]}')
     pass
 
 # 2. DAG
@@ -40,12 +40,12 @@ with DAG (
 # 3. 오퍼레이터를 이용하여 task를 정의
     t1 = BashOperator(
         task_id = "jinja_used_task",
-        bash_command = "echo 'DAG의 t1 task 수행시간 {{ds}}, {{ti}}"
+        bash_command = "echo 'DAG의 t1 task 수행시간 {{ds}}, {{ti}}'"
     )
     t2 = BashOperator(
         task_id = "jinja_macro_task",
         # macro를 통해 준비된 함수 활용
-        bash_command = "echo 'DAG의 t1 task 일주일전 수행시간(임시) {{macro.ds_add(ds - 7)}}, {{macro.random()}}"
+        bash_command = "echo 'DAG의 t1 task 일주일전 수행시간(임시) {{macros.ds_add(ds - 7)}}, {{macros.random()}}'"
     )
     t3 = PythonOperator(
         task_id = "jinja_python_task",
