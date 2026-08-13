@@ -27,13 +27,24 @@ KST = pendulum.timezone("Asia/Seoul")
 
 # 실습 기본 구성 틀 작성
 # 콜백함수
-def _extract(**kwags):
+def _extract(**kwargs):
+    '''
+        - 스마트 팩토리에 설치된 오븐 센서에서 데이터가 발생했고, 데이터 레이크(s3)에 저장되어있다 가정
+        - s3에서 가져왔다 가정
+    '''
+    # 더미 데이터 구성 = [ {}, {}, {} ...]
+   data = [
+       {
+           
+       }
+       for i in range(10):
+   ] 
     pass
 
-def _transform(**kwags):
+def _transform(**kwargs):
     pass
 
-def _load(**kwags):
+def _load(**kwargs):
     pass
 
 
@@ -54,24 +65,31 @@ with DAG(
 
     # task 정의
     task_create_table = SQLExecuteQueryOperator(
-        task_id = "create_table"
+        task_id = "create_table",
         # 접속 정보 설정 -> 대시보드 > admin > connection 구성한 값 설정 -> id값
-        connection_id = "mysql_default"
+        conn_id = "mysql_default",
         sql = 
         '''
-        
+            CREATE TABLE IF NOT EXISTS sensor_readings (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                sensor_id VARCHAR(50),
+                timestamp DATETIME,
+                temperature_c FLOAT,
+                temperature_f FLOAT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
         '''
     )
     task_extract = PythonOperator(
-        task_id = "extract"
+        task_id = "extract",
         python_callable = _extract
     )
     task_transform = PythonOperator(
-        task_id = "transform"
+        task_id = "transform",
         python_callable = _transform
     )
     task_load = PythonOperator(
-        task_id = "load"
+        task_id = "load",
         python_callable = _load
     )
 
