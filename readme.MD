@@ -455,7 +455,7 @@ Load                Transform
                       │
                       ▼
                   Transform <- Pandas / Polars / Spark / Glue(etl, 데이터베이스, 테이블, 크롤러 등 활용)
-                          │
+                      │
                       ▼
                    Load <- Pandas / Polars / Spark / Glue(etl, 데이터베이스, 테이블, 크롤러 등 활용)
                       │
