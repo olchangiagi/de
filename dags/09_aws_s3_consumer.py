@@ -20,6 +20,17 @@ BUCKET_NAME = "de-ai-08-infra-827913617635"
 UPLOAD_FILE_NAME = "sensor_data.csv" # 현재 시간등 인식/구분 정보 누락
 S3_KEY = f"airflow/{UPLOAD_FILE_NAME}"  # s3상 위치 조정
 
+def _reading_data(**kwargs):
+    # s3 훅 사용
+    hook = S3Hook(aws_conn_id = "aws_default") # 연결
+    # 읽기
+    data = hook.read_key(key = S3_KEY, bucket_name = BUCKET_NAME)
+    # 비즈니스 로직 수행
+    logging.info("--- 내용 출력 시작 ---")
+    logging.info(data)
+    logging.info("--- 내용 출력 종료 ---")
+    pass
+
 # 3. DAG
 with DAG( 
   dag_id      = "09_aws_s3_consumer",
@@ -49,13 +60,17 @@ with DAG(
         timeout = 60*10 # 10분 넘게 서비스 가동 후 감지가 안되면 종료
     )
 
+    # 센서에 변화가 감지 되었다 -> 본 task 작동
     task_reading_data = PythonOperator(
         task_id = "reading_data",
         python_callable = _reading_data
     )
 
-    task_delete_data = S3DeleteObjectsOperator( # 실제로는 백업 처리
-        task_id = "delete_data"
+    task_delete_data = S3DeleteObjectsOperator( # 실제로는 백업 처리, # n개 삭제 도구
+        task_id = "delete_data",
+        bucket = BUCKET_NAME,
+        keys = [S3_KEY],
+        aws_conn_id = "aws_default"
     )
     # 5. 의존성
     task_wait_for_trigger >> task_reading_data >> task_delete_data
