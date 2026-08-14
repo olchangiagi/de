@@ -7,7 +7,7 @@ variable "aws_region" {
 variable "project_name" {
   description = "데이터 엔지니어 프로젝트 연습용"
   type        = string
-  default     = "de-ai-08-de"
+  default     = "de-ai-08-infra"
 }
 
 variable "environment" {
