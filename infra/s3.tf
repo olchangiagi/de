@@ -1,73 +1,73 @@
 # s3 구성에서만 사용
 locals {
-    # s3 버킷 명
-    # 글로벌 기준: 버킷 이름은 3~63자여야 하며 글로벌 네임스페이스 내에서 고유해야 합니다. 
-    #              버킷 이름은 문자나 숫자로 시작하고 끝나야 합니다. 
-    #              유효한 문자는 a~z, 0~9, 마침표(.), 하이픈(-)입니다
+  # s3 버킷 명
+  # 글로벌 기준: 버킷 이름은 3~63자여야 하며 글로벌 네임스페이스 내에서 고유해야 합니다. 
+  #              버킷 이름은 문자나 숫자로 시작하고 끝나야 합니다. 
+  #              유효한 문자는 a~z, 0~9, 마침표(.), 하이픈(-)입니다
 
-    # var.project_name : de-ai-08-infra
-    # data.aws_caller_identity.current.account_id: AWS 계정 ID (827913617635)
-    # 최종 버킷 명: s3_bucket_name = "de-ai-08-infra-827913617635"
-    airflow_bucket_name = "${var.project_name}-${data.aws_caller_identity.current.account_id}"
+  # var.project_name : de-ai-08-infra
+  # data.aws_caller_identity.current.account_id: AWS 계정 ID (827913617635)
+  # 최종 버킷 명: s3_bucket_name = "de-ai-08-infra-827913617635"
+  airflow_bucket_name = "${var.project_name}-${data.aws_caller_identity.current.account_id}"
 }
 
 # 버킷 생성
 resource "aws_s3_bucket" "airflow_data" {
-    # 버킷명
-    bucket = local.airflow_bucket_name
-    # 버킷을 삭제할 때
-    # false: 버킷 내부에 오브젝트가 남아 있다면, terraform destroy 수행시 버킷삭제 중단 -> error
-    # true: 버킷 내부 오브젝트까지 전부 제거, 버킷도 삭제
-    force_destroy = var.s3_force_destroy
+  # 버킷명
+  bucket = local.airflow_bucket_name
+  # 버킷을 삭제할 때
+  # false: 버킷 내부에 오브젝트가 남아 있다면, terraform destroy 수행시 버킷삭제 중단 -> error
+  # true: 버킷 내부 오브젝트까지 전부 제거, 버킷도 삭제
+  force_destroy = var.s3_force_destroy
 
-    # 공용 태그
-    tags = merge(
-        local.common_tags,
-        {
-            Name = local.airflow_bucket_name
-        }
-    )
+  # 공용 태그
+  tags = merge(
+    local.common_tags,
+    {
+      Name = local.airflow_bucket_name
+    }
+  )
 }
 
 # s3 object ownership(객체 소유권)
 resource "aws_s3_bucket_ownership_controls" "airclow_data" {
-    bucket = local.airflow_bucket_name
+  bucket = aws_s3_bucket.airflow_data.id
 
-    rule {
+  rule {
     # BucketOwnerEnforced
     # - ACL 비활성화됨(권장), ACL 기능 사용 x
     # - 버킷 소유자가 버킷 내부의 객체의 소유권을 가진다
     # - 접근 제어 IAM Policy / Bucket Policy 중심으로 관리한다 -> ACL 방식x, 계정 소유자()
     object_ownership = "BucketOwnerEnforced"
-    }
+  }
 }
 
 # s3 public access block 
 # airflow(외부 PC) -> iam access key(IAM 인증) -> aws s3 bucket 접근
 # s3는 private으로 관리
 resource "aws_s3_bucket_public_access_block" "airflow_data" {
-    bucket = local.airflow_bucket_name
+  bucket = aws_s3_bucket.airflow_data.id
 
-    # 설정
-    # 새로운 public acl 설정 차단
-    block_public_acls = true
-    # 기존 public acl있더라도 무시
-    ignore_public_acls = true
-    # public 접근 허용하는 bucket policy 생성 차단
-    block_public_policy = true
-    # bucket이 public policy를 가지더라도 public 접근 제한
-    restrict_public_buckets = true
+  # 설정
+  # 새로운 public acl 설정 차단
+  block_public_acls = true
+  # 기존 public acl있더라도 무시
+  ignore_public_acls = true
+  # public 접근 허용하는 bucket policy 생성 차단
+  block_public_policy = true
+  # bucket이 public policy를 가지더라도 public 접근 제한
+  restrict_public_buckets = true
 }
 
 # s3 encryption
 # 두 개의 개별 암호화 계층으로 객체를 보호
 # s3에 저장되는 object를 자동으로 암호화하도록 설정
 resource "aws_s3_bucket_server_side_encryption_configuration" "airflow_data" {
-    bucket = local.airflow_bucket_name
+  bucket = aws_s3_bucket.airflow_data.id
 
-    rule {
-        apply_server_side_encryption_by_default {
-          sse_algorithm = "AES256"
-        }
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm = "AES256"
     }
+  }
 }
