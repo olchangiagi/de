@@ -43,7 +43,7 @@ with DAG(
     task_upload_to_s3 = LocalFilesystemToS3Operator(
         task_id = "upload_to_s3",
         filename =  LOCAL_PATH, # 실제 local pc에 존재하는 파일의 풀 경로
-        dest_key = UPLOAD_FILE_NAME, # 버킷 내부에서 객체간 구분하는 key -> 파일명으로 대체
+        dest_key  = S3_KEY, # 버킷 내부에서 객체간 구분하는 key -> 파일명으로 대체
         dest_bucket = BUCKET_NAME,
         aws_conn_id = "aws_default", # aws 접속 정보
         replace = True # key가 동일하면(동일 파일이면) -> 대체
