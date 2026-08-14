@@ -36,7 +36,8 @@ with DAG(
     # 4. task
     # 데이터 생성
     task_create_dummy_data_csv = BashOperator(
-
+        task_id = "create_dummy_data_csv",
+        bash_command = f'echo "id, timestamp, value\n1, $(data), 100\n2, $(data), 500" > {LOCAL_PATH}'
     )
     # 업로드(put)
     task_upload_to_s3 = LocalFilesystemToS3Operator(
