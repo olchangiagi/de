@@ -6,7 +6,7 @@ locals {
 # workgroup (작업 그룹 생성)
 resource "aws_athena_workgroup" "analysis" {
   # 작업 그룹 이름
-  name = "${var.project_name}-anlaysis"
+  name = "${var.project_name}-analysis"
   # 작업 그룹 활성화
   state = "ENABLED"
   # 작업 그룹 구성 설정
