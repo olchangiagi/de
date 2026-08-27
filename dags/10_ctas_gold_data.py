@@ -20,7 +20,7 @@ SILVER_TABLE_NAME = "silver_logs_tbl"
 GOLD_TABLE_NAME = "gold_daily_report_ctas_tbl"
 
 # Athena SQL 실행 결과 저장 -> 직접 지정 or 작업 그룹 지정 -> 저장되는 위치가 결정
-QUERY_RESULT_S3 = f"s3://${BUCKET_NAME}/athena/dags"
+QUERY_RESULT_S3 = f"s3://{BUCKET_NAME}/athena/dags"
 
 # CTAS가 실제로 참조하는 데이터 저장위치 -> parquet 저장
 GOLD_PREFIX = "gold/daily_report_ctas/"
@@ -49,10 +49,30 @@ with DAG(
     
     # 4. TASK 정의(오퍼레이터 사용)
     # 4-1. 기존 CTAS Gold 테이블 삭제
-    t1_drop_gold_table = AthenaOperator()
+    t1_drop_gold_table = AthenaOperator(
+        task_id = "drop_gold_table",
+        # sql
+        query = f'''
+            Drop table if exists {GOLD_TABLE_NAME}
+        ''',
+        # 접속 및 DB 정보
+        aws_conn_id = AWS_CONN_ID,
+        database = DATABASE_NAME,
+        output_location = QUERY_RESULT_S3,
+        # 워크그룹의 저장 위치가 우선
+        workgroup = "de-ai-08-loggen-analysis"
+    )
     # 4-2. 기존 CTAS s3 데이터 삭제
-    t2_delete_gold_s3 = S3DeleteObjectsOperator()
+    t2_delete_gold_s3 = S3DeleteObjectsOperator(
+        task_id = "delete_gold_s3",
+        bucket = BUCKET_NAME,
+        prefix = GOLD_PREFIX,
+        aws_conn_id = AWS_CONN_ID
+    )
     # 4-3. CTAS 실행 (Silver sql 수행 -> 결과 -> 테이블 구성 -> 결과 데이터는 parquet 저장)
-    t3_create_gold_table_with_ctas = AthenaOperator()
+    # t3_create_gold_table_with_ctas = AthenaOperator(
+    #     task_id = "create_gold_table_with_ctas"
+    # )
 
     # 5. 의존성(수행 순서 >>)
+    t1_drop_gold_table # >> t2_delete_gold_s3 >> t3_create_gold_table_with_ctas
