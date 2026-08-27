@@ -12,20 +12,20 @@ resource "aws_glue_catalog_table" "silver" {
   table_type    = "EXTERNAL_TABLE"
 
   parameters = {
-    EXTERNAL                    = "TRUE"
-    "parquet.compression"       = "SNAPPY"
-    "projection.enabled"        = "true"
-    "projection.year.type"      = "integer"
-    "projection.year.range"     = "2026,2040" # 뒤에 2040는 설정값, 2026은 현재로 가정
-    "projection.month.type"     = "integer"
-    "projection.month.range"    = "1,12"
-    "projection.month.digits"   = "2" # 2자리수로 맞춤
-    "projection.day.type"       = "integer"
-    "projection.day.range"      = "1,31"
-    "projection.day.digits"     = "2" # 2자리수로 맞춤
-    "projection.hour.type"      = "integer"
-    "projection.hour.range"     = "0,23"
-    "projection.hour.digits"    = "2" # 2자리수로 맞춤
+    EXTERNAL                  = "TRUE"
+    "parquet.compression"     = "SNAPPY"
+    "projection.enabled"      = "true"
+    "projection.year.type"    = "integer"
+    "projection.year.range"   = "2026,2040" # 뒤에 2040는 설정값, 2026은 현재로 가정
+    "projection.month.type"   = "integer"
+    "projection.month.range"  = "1,12"
+    "projection.month.digits" = "2" # 2자리수로 맞춤
+    "projection.day.type"     = "integer"
+    "projection.day.range"    = "1,31"
+    "projection.day.digits"   = "2" # 2자리수로 맞춤
+    "projection.hour.type"    = "integer"
+    "projection.hour.range"   = "0,23"
+    "projection.hour.digits"  = "2" # 2자리수로 맞춤
     #"storage.location.template" = "s3://${locals.airflow_bucket_name}/silver/year=$${year}/month=$${month}/day=$${day}/hour=$${hour}"
     "storage.location.template" = "s3://${var.silver_bucket_name}/silver/year=$${year}/month=$${month}/day=$${day}/hour=$${hour}"
   }

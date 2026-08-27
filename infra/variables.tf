@@ -28,5 +28,6 @@ variable "s3_force_destroy" {
 variable "silver_bucket_name" {
   description = "기존 silver parquet 데이터가 실제 저장하고 있는 s3 버킷 이름 입력"
   type        = string
-  # default => apply 하면 사용자에게 물어봄(입력대기. 사용자와 인터렉션 가능)
+  default     = "de-ai-08-loggen-s3-bk-827913617635"
+  # default 누락시 => apply 하면 사용자에게 물어봄(입력대기. 사용자와 인터렉션 가능)
 }
