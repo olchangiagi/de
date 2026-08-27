@@ -7,7 +7,7 @@ variable "aws_region" {
 variable "project_name" {
   description = "데이터 엔지니어 프로젝트 연습용"
   type        = string
-  default     = "de-ai-08-infra"
+  default     = "de-ai-08-loggen"
 }
 
 variable "environment" {
@@ -20,5 +20,5 @@ variable "environment" {
 variable "s3_force_destroy" {
   description = "True면 버킷 내부 데이터를 모두 삭제하고 버킷까지 삭제"
   type        = bool
-  default     = true
+  default     = false
 }

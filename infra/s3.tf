@@ -21,12 +21,17 @@ resource "aws_s3_bucket" "airflow_data" {
   force_destroy = var.s3_force_destroy
 
   # 공용 태그
-  tags = merge(
-    local.common_tags,
-    {
-      Name = local.airflow_bucket_name
-    }
-  )
+  # tags = merge(
+  #   local.common_tags,
+  #   {
+  #     Name = local.airflow_bucket_name
+  #   }
+  # )
+  tags = {
+    ManageBy = "Terraform"
+    Project = "de-ai-08-loggen"
+    Purpose = "로그 제너레이터"
+  }
 }
 
 # s3 object ownership(객체 소유권)
