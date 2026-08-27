@@ -36,10 +36,8 @@ resource "aws_glue_catalog_table" "silver" {
 
   storage_descriptor {
     location = "s3://${aws_s3_bucket.data.bucket}/silver/"
-
     input_format  = "org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat"
     output_format = "org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat"
-
     compressed = true
 
     ser_de_info {
@@ -104,6 +102,8 @@ resource "aws_glue_catalog_table" "silver" {
       type = "struct<status_code:int,latency_ms:bigint,response_bytes:bigint>"
     }
 
+    # 모든 도메인의 데이터를 받을 수 있또록 슈퍼셋 구성
+    # data 중첩 스키마 -> 도메인별로 상이 -> 모든 도메인의 키를 등록
     columns {
       name = "data"
       type = "struct<user_id:string,session_id:string,product_id:string,category:string,quantity:bigint,unit_price:bigint,currency:string,campaign:string,keyword:string,result_count:bigint,order_id:string,total_amount:bigint,payment_method:string,payment_result:string,transaction_id:string,customer_id:string,account_id:string,channel:string,risk_score:double,amount:bigint,merchant_id:string,merchant_category:string,authorization_result:string,destination_bank:string,destination_account_token:string,transfer_result:string,balance:bigint,auth_method:string,login_result:string,player_id:string,server_region:string,player_level:bigint,ping_ms:bigint,platform:string,match_id:string,mode:string,party_size:bigint,result:string,score:bigint,duration_seconds:bigint,item_id:string,currency_type:string,purchase_result:string,quest_id:string,reward_xp:bigint,reward_gold:bigint,plant_id:string,line_id:string,equipment_id:string,equipment_type:string,message_id:string,temperature_c:double,vibration_mm_s:double,pressure_bar:double,rpm:bigint,state:string,runtime_seconds:bigint,lot_id:string,sample_size:bigint,defect_count:bigint,quality_result:string,alarm_code:string,severity:string,acknowledged:boolean,maintenance_type:string,technician_id:string,downtime_minutes:bigint>"
