@@ -32,10 +32,14 @@ TARGET_YEAR  = "2026" #"{{ dag_run.conf.get('target_date', ds)[0:4] }}"
 TARGET_MONTH = "08"   #"{{ dag_run.conf.get('target_date', ds)[5:7] }}"
 TARGET_DAY   = "27"   #"{{ dag_run.conf.get('target_date', ds)[8:10] }}"
 
+# 매일 1개의 데이터셋 구성 -> 파티션 사용 권장
+# s3://버킷/gold/daily_report/year=2026/month=08/day=27/
+GOLD_PARTITION_PREFIX = f"{GOLD_PREFIX}/year={TARGET_YEAR}/month={TARGET_MONTH}/day={TARGET_DAY}/"
+
 # 3. DAG 정의
 with DAG(  
-  dag_id      = "10_cats_gold_data",
-  description = "Silver -> DAG + Athena -> Gold, parquet 생성",
+  dag_id      = "11_athena_partition_gold_data",
+  description = "Silver -> Partition 단위 Gold, parquet 생성",
   default_args= {
     "owner"           : "aic-de1-admin",    
     "retries"         : 1,
@@ -44,78 +48,119 @@ with DAG(
   schedule_interval = "0 5 * * *", # 00시 05분 00초에 참고용
   start_date  = pendulum.datetime( 2026,6,29, tz=pendulum.timezone("Asia/Seoul") ),
   catchup     = False,
-  tags        = ['aws', 'athena', 'ctas']
+  tags        = ['aws', 'athena', 'partition']
 ) as dag: 
 
     # 4. task 정의 (오퍼레이터 사용)
-    # 4-1. 기존 CTAS Gold 테이블 삭제
-    t1_drop_gold_table = AthenaOperator(
-        task_id = "drop_gold_table",
-        # sql
+    # 4-1. Gold 테이블 생성 (최초 실행시 1회 생성 -> 이후 테이블 유지)
+    #      실습: gold_daily_report_tbl, 컬럼 (desc gold_daily_report_ctas_tbl; 내용으로 배치)
+    t1_create_gold_table = AthenaOperator(
+        task_id = "create_gold_table",
         query = f'''
-            Drop table if exists {GOLD_TABLE_NAME}
-        ''',
-        # 접속 및 디비 정보
-        aws_conn_id = AWS_CONN_ID,
-        database    = DATABASE_NAME,
-        output_location = QUERY_RESULT_S3,
-        # 워크그룹의 저장 위치가 더 우선순위가 됨
-        # workgroup   = "de-ai-25-loggen-analysis"     
-    )
-    # 4-2. 기존 CTAS S3 데이터 삭제
-    t2_delete_gold_s3  = S3DeleteObjectsOperator(
-        task_id = "delete_gold_s3",
-        bucket  = BUCKET_NAME,
-        prefix  = GOLD_PREFIX,
-        aws_conn_id = AWS_CONN_ID
-    )
-    # 4-3. CTAS 실행 (silver sql 수행 => 결과 => 테이블 구성 => 결과 데이터는 parquet 저장)
-    t3_create_gold_table_with_ctas = AthenaOperator(
-        task_id = "create_gold_table_with_ctas",
-        # sql
-        query = f'''
-            create table {GOLD_TABLE_NAME} 
-            with (
-                format            = 'PARQUET',
-                external_location = '{GOLD_LOCATION}'
+            CREATE EXTERNAL TABLE IF NOT EXISTS {GOLD_TABLE_NAME} (
+                    report_date         	date,               	                    
+                    domain              	string,              	                    
+                    event_type          	string,              	                    
+                    service_name        	string,              	                    
+                    total_count         	bigint,              	                    
+                    response_count      	bigint,              	                    
+                    success_count       	bigint,              	                    
+                    error_count         	bigint,              	                    
+                    error_rate_pct      	double,              	                    
+                    avg_latency_ms      	double,              	                    
+                    min_latency_ms      	bigint,              	                    
+                    p95_latency_ms      	bigint,              	                    
+                    max_latency_ms      	bigint,              	                    
+                    total_request_bytes 	bigint,              	                    
+                    total_response_bytes	bigint 
             )
-            as 
-            select
-                DATE('{TARGET_DATE}') AS report_date,
-                domain,
-                event_type,
-                COALESCE( service.name,'unknown' ) AS service_name,
-                COUNT(*) AS total_count,
-                COUNT(response.status_code) AS response_count,
-                COUNT_IF( response.status_code >= 200 AND response.status_code < 400 ) AS success_count,
-                COUNT_IF( response.status_code >= 400 ) AS error_count,
-                CASE
-                    WHEN COUNT(response.status_code) = 0 THEN 0
-                    ELSE ROUND( 100.0 * COUNT_IF(response.status_code >= 400) / COUNT(response.status_code), 2 )
-                END
-                    AS error_rate_pct,
-                ROUND( AVG( CAST( response.latency_ms AS DOUBLE ) ), 2 ) AS avg_latency_ms,
-                MIN(response.latency_ms) AS min_latency_ms,
-                APPROX_PERCENTILE( response.latency_ms, 0.95 ) AS p95_latency_ms,
-                MAX(response.latency_ms) AS max_latency_ms,
-                COALESCE( SUM(request.request_bytes), 0 ) AS total_request_bytes,
-                COALESCE( SUM(response.response_bytes), 0 ) AS total_response_bytes
-            from {SILVER_TABLE_NAME}
-            where 
-                year='{TARGET_YEAR}' and
-                month='{TARGET_MONTH}' and
-                day='{TARGET_DAY}'
-            group by
-                domain,
-                event_type,
-                service.name
+            partitioned by (
+                year    STRING,
+                month   STRING,
+                day     STRING    
+            )
+            STORED AS PARQUET
+            LOCATION '{GOLD_LOCATION}'
         ''',
         aws_conn_id = AWS_CONN_ID,
         database    = DATABASE_NAME,
-        output_location = QUERY_RESULT_S3,
-        # 워크그룹의 저장 위치가 더 우선순위가 됨
-        # workgroup   = "de-ai-08-loggen-analysis"
+        output_location = QUERY_RESULT_S3
     )
 
+
+
+    # 4-2. 동일 날짜에 대해서 중복적 실행하는 컨셉이라면 -> 허용(1일 1회인데 허용), 하루에 여러번 수행 컨셉(누적)
+
+    # 4-3. 누적 교체하는 관점 -> 데이터 삭제 처리 필요
+
+    # 4-1. 기존 CTAS Gold 테이블 삭제
+    # t1_drop_gold_table = AthenaOperator(
+    #     task_id = "drop_gold_table",
+    #     # sql
+    #     query = f'''
+    #         Drop table if exists {GOLD_TABLE_NAME}
+    #     ''',
+    #     # 접속 및 디비 정보
+    #     aws_conn_id = AWS_CONN_ID,
+    #     database    = DATABASE_NAME,
+    #     output_location = QUERY_RESULT_S3,
+    #     # 워크그룹의 저장 위치가 더 우선순위가 됨
+    #     # workgroup   = "de-ai-25-loggen-analysis"     
+    # )
+    # 4-2. 기존 CTAS S3 데이터 삭제
+    # t2_delete_gold_s3  = S3DeleteObjectsOperator(
+    #     task_id = "delete_gold_s3",
+    #     bucket  = BUCKET_NAME,
+    #     prefix  = GOLD_PREFIX,
+    #     aws_conn_id = AWS_CONN_ID
+    # )
+    # 4-3. CTAS 실행 (silver sql 수행 => 결과 => 테이블 구성 => 결과 데이터는 parquet 저장)
+    # t3_create_gold_table_with_ctas = AthenaOperator(
+    #     task_id = "create_gold_table_with_ctas",
+    #     # sql
+    #     query = f'''
+    #         create table {GOLD_TABLE_NAME} 
+    #         with (
+    #             format            = 'PARQUET',
+    #             external_location = '{GOLD_LOCATION}'
+    #         )
+    #         as 
+    #         select
+    #             DATE('{TARGET_DATE}') AS report_date,
+    #             domain,
+    #             event_type,
+    #             COALESCE( service.name,'unknown' ) AS service_name,
+    #             COUNT(*) AS total_count,
+    #             COUNT(response.status_code) AS response_count,
+    #             COUNT_IF( response.status_code >= 200 AND response.status_code < 400 ) AS success_count,
+    #             COUNT_IF( response.status_code >= 400 ) AS error_count,
+    #             CASE
+    #                 WHEN COUNT(response.status_code) = 0 THEN 0
+    #                 ELSE ROUND( 100.0 * COUNT_IF(response.status_code >= 400) / COUNT(response.status_code), 2 )
+    #             END
+    #                 AS error_rate_pct,
+    #             ROUND( AVG( CAST( response.latency_ms AS DOUBLE ) ), 2 ) AS avg_latency_ms,
+    #             MIN(response.latency_ms) AS min_latency_ms,
+    #             APPROX_PERCENTILE( response.latency_ms, 0.95 ) AS p95_latency_ms,
+    #             MAX(response.latency_ms) AS max_latency_ms,
+    #             COALESCE( SUM(request.request_bytes), 0 ) AS total_request_bytes,
+    #             COALESCE( SUM(response.response_bytes), 0 ) AS total_response_bytes
+    #         from {SILVER_TABLE_NAME}
+    #         where 
+    #             year='{TARGET_YEAR}' and
+    #             month='{TARGET_MONTH}' and
+    #             day='{TARGET_DAY}'
+    #         group by
+    #             domain,
+    #             event_type,
+    #             service.name
+    #     ''',
+    #     aws_conn_id = AWS_CONN_ID,
+    #     database    = DATABASE_NAME,
+    #     output_location = QUERY_RESULT_S3,
+        # 워크그룹의 저장 위치가 더 우선순위가 됨
+        # workgroup   = "de-ai-08-loggen-analysis"
+    # )
+
     # 5. 의존성 구성 (수행 순서 >> )
-    t1_drop_gold_table  >> t2_delete_gold_s3 >> t3_create_gold_table_with_ctas
+    t1_create_gold_table  # >> t2_delete_gold_s3 >> t3_create_gold_table_with_ctas
